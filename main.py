@@ -19,29 +19,71 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
     GHIDRA_SERVER_HOST = os.getenv("GHIDRA_SERVER_URL", "127.0.0.1")
     GHIDRA_SERVER_PORT = os.getenv("GHIDRA_SERVER_PORT", "8080")
     OLLAMA_SERVER_HOST = os.getenv("OLLAMA_SERVER_HOST", "127.0.0.1")
-    OLLAMA_SERVER_PORT = os.getenv("OLLAMA_SERVER_URL", "11434")
+    OLLAMA_SERVER_PORT = os.getenv("OLLAMA_SERVER_PORT", "11434")
     OLLAMA_SERVER_MODEL = os.getenv("OLLAMA_MODEL", "")
     CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "")
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
     # Config overrides and other args
     parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
-    parser.add_argument("--ollama", action="store_true", help=f"Use Ollama (the default setting)")
-    parser.add_argument("--claude", action="store_true", help=f"Use Claude in the cloud")
-    parser.add_argument("--gh", "--ghidra-host", type=str, default=GHIDRA_SERVER_HOST,
-                        help=f"Hostname or IP address of Ghidra MCP plugin, default: {GHIDRA_SERVER_HOST}")
-    parser.add_argument("--gp", "--ghidra-port", type=str, default=GHIDRA_SERVER_PORT,
-                        help=f"Port number of Ghidra MCP plugin, default: {GHIDRA_SERVER_PORT}")
-    parser.add_argument("--oh", "--ollama-host", type=str, default=OLLAMA_SERVER_HOST,
-                        help=f"Hostname or IP address of Ollama server, default: {OLLAMA_SERVER_HOST}")
-    parser.add_argument("--op", "--ollama-port", type=str, default=OLLAMA_SERVER_PORT,
-                        help=f"Hostname or IP address of Ollama server, default: {OLLAMA_SERVER_PORT}")
-    parser.add_argument("--om", "--ollama-model", type=str, 
-                        default=OLLAMA_SERVER_MODEL if OLLAMA_SERVER_MODEL != "" else "(None)",
-                        help=f"Model to run on Ollama server, default: {OLLAMA_SERVER_PORT}")
-    parser.add_argument("--cm", "--claude-model", type=str,
-                        default=CLAUDE_MODEL if CLAUDE_MODEL != "" else "(None)",
-                        help=f"Model to run on Claude in the cloud, default: {OLLAMA_SERVER_PORT}")
+    parser.add_argument(
+        "--ollama",
+        action="store_true",
+        help="Use Ollama (the default setting)",
+    )
+    parser.add_argument(
+        "--claude",
+        action="store_true",
+        help="Use Claude in the cloud",
+    )
+    parser.add_argument(
+        "--gh",
+        "--ghidra-host",
+        dest="ghidra_host",
+        type=str,
+        default=GHIDRA_SERVER_HOST,
+        help=f"Hostname or IP address of Ghidra MCP plugin, default: {GHIDRA_SERVER_HOST}",
+    )
+    parser.add_argument(
+        "--gp",
+        "--ghidra-port",
+        dest="ghidra_port",
+        type=str,
+        default=GHIDRA_SERVER_PORT,
+        help=f"Port number of Ghidra MCP plugin, default: {GHIDRA_SERVER_PORT}",
+    )
+    parser.add_argument(
+        "--oh",
+        "--ollama-host",
+        dest="ollama_host",
+        type=str,
+        default=OLLAMA_SERVER_HOST,
+        help=f"Hostname or IP address of Ollama server, default: {OLLAMA_SERVER_HOST}",
+    )
+    parser.add_argument(
+        "--op",
+        "--ollama-port",
+        dest="ollama_port",
+        type=str,
+        default=OLLAMA_SERVER_PORT,
+        help=f"Port number of Ollama server, default: {OLLAMA_SERVER_PORT}",
+    )
+    parser.add_argument(
+        "--om",
+        "--ollama-model",
+        dest="ollama_model",
+        type=str,
+        default=OLLAMA_SERVER_MODEL if OLLAMA_SERVER_MODEL != "" else "(None)",
+        help="Model to run on Ollama server",
+    )
+    parser.add_argument(
+        "--cm",
+        "--claude-model",
+        dest="claude_model",
+        type=str,
+        default=CLAUDE_MODEL if CLAUDE_MODEL != "" else "(None)",
+        help="Model to run on Claude in the cloud",
+    )
     args = parser.parse_args()
 
     print(args)
