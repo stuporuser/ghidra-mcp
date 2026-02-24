@@ -6,11 +6,6 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-try:  # Optional Claude support – kept for backwards compatibility.
-    from core.claude import Claude  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    Claude = object  # type: ignore[misc,assignment]
-
 from core.ghidra_mcp_client import MCPClient
 from core.tools import ToolManager
 
@@ -169,30 +164,4 @@ class ChatOllama:
         return final_text_response
 
 
-class Chat:
-    """
-    Legacy Claude-based chat wrapper.
 
-    This path is kept only for backwards compatibility. It is not wired into
-    the current CLI and will raise if instantiated without Claude support.
-    """
-
-    def __init__(self, claude_service: Claude, clients: Dict[str, MCPClient]):
-        if Claude is object:
-            raise RuntimeError(
-                "Claude-based Chat is not available because anthropic/Claude "
-                "dependencies are not installed. Use ChatOllama instead."
-            )
-
-        self.claude_service: Claude = claude_service
-        self.clients: Dict[str, MCPClient] = clients
-        self.messages: List[Dict[str, Any]] = []
-
-    async def _process_query(self, query: str) -> None:
-        self.messages.append({"role": "user", "content": query})
-
-    async def run(self, query: str) -> str:
-        raise RuntimeError(
-            "Claude-based Chat.run is no longer supported in this project. "
-            "Please migrate to ChatOllama."
-        )

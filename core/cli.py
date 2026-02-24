@@ -8,7 +8,7 @@ from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
 from prompt_toolkit.document import Document
 from prompt_toolkit.buffer import Buffer
 
-from core.cli_chat import CliChat, CliChatOllama
+from core.cli_chat import CliChatOllama
 
 
 class CommandAutoSuggest(AutoSuggest):
