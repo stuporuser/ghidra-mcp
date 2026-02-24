@@ -146,15 +146,11 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
 
         if llm_server == "ollama":
             conf["ghidra_url"] = ghidra_url
+            conf["ghidra_host"] = GHIDRA_SERVER_HOST.strip()
+            conf["ghidra_port"] = GHIDRA_SERVER_PORT.strip()
             conf["ollama_url"] = ollama_url
             conf["ollama_model"] = ollama_model
             
-            return llm_server, conf
-
-        elif llm_server == "claude":
-            conf["claude_model"] = claude_model
-            conf["anthropic_api_key"] = anthropic_api_key
-
             return llm_server, conf
         
         else:
@@ -169,7 +165,11 @@ async def main():
     llm_server, conf = build_runtime_config()
 
     clients: dict[str, MCPClient] = {}
-    command, args = ("python", ["core/ghidra_mcp_server.py"])
+    command, args = ("python", [
+        "core/ghidra_mcp_server.py",
+        "--ghidra-host", conf["ghidra_host"],
+        "--ghidra-host", conf["ghidra_port"],
+        ])
 
     async with AsyncExitStack() as stack:
         ghidra_client = await stack.enter_async_context(
@@ -177,7 +177,7 @@ async def main():
         )
         clients["ghidra_client"] = ghidra_client
 
-        #for i, server_script in enumerate(server_scripts):
+        # for i, server_script in enumerate(server_scripts):
         #    client_id = f"client_{i}_{server_script}"
         #    client = await stack.enter_async_context(
         #        MCPClient(command="uv", args=["run", server_script])
