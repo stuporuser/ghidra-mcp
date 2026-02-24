@@ -118,6 +118,32 @@ class ChatOllama:
             content = message.get("content") or ""
             tool_calls = message.get("tool_calls") or []
 
+            # Some models may emit the tool call structure directly as JSON in
+            # `content` instead of using the `tool_calls` field. Detect that
+            # pattern and synthesize a tool_call so we still execute the tool.
+            if not tool_calls and isinstance(content, str):
+                try:
+                    maybe_call = json.loads(content)
+                    if (
+                        isinstance(maybe_call, dict)
+                        and "name" in maybe_call
+                        and "arguments" in maybe_call
+                        and maybe_call["name"] in self._tool_clients
+                    ):
+                        tool_calls = [
+                            {
+                                "function": {
+                                    "name": maybe_call["name"],
+                                    "arguments": maybe_call["arguments"],
+                                }
+                            }
+                        ]
+                        # Clear the content so we don't just echo the JSON back.
+                        content = ""
+                except Exception:
+                    # If parsing fails, just treat it as normal content.
+                    pass
+
             # Record the assistant's message (including any thinking/tool_calls)
             assistant_msg: Dict[str, Any] = {
                 "role": "assistant",
