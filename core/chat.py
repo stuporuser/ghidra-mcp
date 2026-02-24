@@ -57,20 +57,31 @@ class ChatOllama:
         )
         response.raise_for_status()
 
-        # Some Ollama deployments may still stream multiple JSON objects even
-        # when stream=False. If so, fall back to parsing the last JSON line.
-        try:
-            return response.json()
-        except ValueError:
-            text = response.text.strip()
-            lines = [
-                line
-                for line in text.splitlines()
-                if line.strip() and line.strip() != "[DONE]"
-            ]
-            if not lines:
-                raise
-            return json.loads(lines[-1])
+        # Some Ollama deployments may still stream multiple JSON objects or
+        # server-sent events even when stream=False, which breaks response.json().
+        # To be robust, always parse the raw text ourselves and take the last
+        # non-empty JSON line.
+        text = response.text.strip()
+        if not text:
+            raise RuntimeError("Empty response from Ollama /api/chat")
+
+        raw_lines = [
+            line
+            for line in text.splitlines()
+            if line.strip() and line.strip() != "[DONE]"
+        ]
+        if not raw_lines:
+            raise RuntimeError(f"Unexpected response from Ollama: {text!r}")
+
+        # Handle possible SSE-style 'data: {...}' lines.
+        cleaned_lines: List[str] = []
+        for line in raw_lines:
+            line = line.strip()
+            if line.startswith("data:"):
+                line = line[len("data:") :].strip()
+            cleaned_lines.append(line)
+
+        return json.loads(cleaned_lines[-1])
 
     async def _chat(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Run the blocking HTTP request in a thread so we don't block the event loop.
