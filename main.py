@@ -28,7 +28,7 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
     parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
     parser.add_argument("--ollama", action="store_true", help=f"Use Ollama (the default setting)")
     parser.add_argument("--claude", action="store_true", help=f"Use Claude in the cloud")
-    parser.add_argument("--gh", "--ghidra-host", type=str, default=GHIDRA_SERVER_HOST,
+    parser.add_argument("--gh", "--ghidra_host", type=str, default=GHIDRA_SERVER_HOST,
                         help=f"Hostname or IP address of Ghidra MCP plugin, default: {GHIDRA_SERVER_HOST}")
     parser.add_argument("--gp", "--ghidra-port", type=str, default=GHIDRA_SERVER_PORT,
                         help=f"Port number of Ghidra MCP plugin, default: {GHIDRA_SERVER_PORT}")
@@ -52,7 +52,7 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
     claude_model = ""
     anthropic_api_key = ""
 
-    if args.gh: GHIDRA_SERVER_HOST = args.ghidra_host
+    if args.ghidra_host: GHIDRA_SERVER_HOST = args.ghidra_host
     if args.ghidra_port: GHIDRA_SERVER_PORT = args.ghidra_port
 
     if GHIDRA_SERVER_HOST.strip() == "" or GHIDRA_SERVER_PORT.strip() == "":
