@@ -82,6 +82,7 @@ class ChatOllama:
                 "model": self.ollama_model,
                 "messages": self.messages,
                 "tools": self._ollama_tools,
+                "stream": False,
             }
 
             raw = await self._chat(payload)
