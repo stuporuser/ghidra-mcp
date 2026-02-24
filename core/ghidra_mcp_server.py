@@ -1,5 +1,7 @@
+import os
 import sys
 from typing import Any, Union
+from dotenv import load_dotenv
 import requests
 import argparse
 import logging
@@ -19,7 +21,7 @@ def safe_get(endpoint: str, params: Union[dict[str, Any],None] = None) -> list:
     if params is None:
         params = {}
 
-    url = urljoin(GHIDRA_SERVER_URL, endpoint)
+    url = urljoin(mcp.ghidra_url, endpoint)
 
     try:
         response = requests.get(url, params=params, timeout=5)
@@ -33,7 +35,7 @@ def safe_get(endpoint: str, params: Union[dict[str, Any],None] = None) -> list:
 
 def safe_post(endpoint: str, data: dict | str) -> str:
     try:
-        url = urljoin(GHIDRA_SERVER_URL, endpoint)
+        url = urljoin(mcp.ghidra_url, endpoint)
         if isinstance(data, dict):
             response = requests.post(url, data=data, timeout=5)
         else:
@@ -276,51 +278,208 @@ def list_strings(offset: int = 0, limit: int = 2000, filter: Union[str,None] = N
         params["filter"] = filter
     return safe_get("strings", params)
 
-def main():
-    global GHIDRA_SERVER_URL
-    
-    parser = argparse.ArgumentParser(description="MCP server for Ghidra")
-    parser.add_argument("--ghidra-server", type=str, default=GHIDRA_SERVER_URL,
-                        help=f"Ghidra server URL, default: {GHIDRA_SERVER_URL}")
-    parser.add_argument("--mcp-host", type=str, default="127.0.0.1",
-                        help="Host to run MCP server on (only used for sse), default: 127.0.0.1")
-    parser.add_argument("--mcp-port", type=int,
-                        help="Port to run MCP server on (only used for sse), default: 8081")
-    parser.add_argument("--transport", type=str, default="stdio", choices=["stdio", "sse"],
-                        help="Transport protocol for MCP, default: stdio")
+
+
+def build_runtime_config() -> str:
+
+    # Main config
+    load_dotenv()
+    GHIDRA_SERVER_HOST = os.getenv("GHIDRA_SERVER_HOST", "127.0.0.1")
+    GHIDRA_SERVER_PORT = os.getenv("GHIDRA_SERVER_PORT", "8080")
+    #OLLAMA_SERVER_HOST = os.getenv("OLLAMA_SERVER_HOST", "127.0.0.1")
+    #OLLAMA_SERVER_PORT = os.getenv("OLLAMA_SERVER_PORT", "11434")
+    #OLLAMA_SERVER_MODEL = os.getenv("OLLAMA_MODEL", "")
+    #CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "")
+    #ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+    # Config overrides and other args
+    parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
+    #parser.add_argument(
+    #    "--ollama",
+    #    action="store_true",
+    #    help="Use Ollama (the default setting)",
+    #)
+    #parser.add_argument(
+    #    "--claude",
+    #    action="store_true",
+    #    help="Use Claude in the cloud",
+    #)
+    parser.add_argument(
+        "--gh",
+        "--ghidra-host",
+        dest="ghidra_host",
+        type=str,
+        default=GHIDRA_SERVER_HOST,
+        help=f"Hostname or IP address of Ghidra MCP plugin, default: {GHIDRA_SERVER_HOST}",
+    )
+    parser.add_argument(
+        "--gp",
+        "--ghidra-port",
+        dest="ghidra_port",
+        type=str,
+        default=GHIDRA_SERVER_PORT,
+        help=f"Port number of Ghidra MCP plugin, default: {GHIDRA_SERVER_PORT}",
+    )
+    #parser.add_argument(
+    #    "--oh",
+    #    "--ollama-host",
+    #    dest="ollama_host",
+    #    type=str,
+    #    default=OLLAMA_SERVER_HOST,
+    #    help=f"Hostname or IP address of Ollama server, default: {OLLAMA_SERVER_HOST}",
+    #)
+    #parser.add_argument(
+    #    "--op",
+    #    "--ollama-port",
+    #    dest="ollama_port",
+    #    type=str,
+    #    default=OLLAMA_SERVER_PORT,
+    #    help=f"Port number of Ollama server, default: {OLLAMA_SERVER_PORT}",
+    #)
+    #parser.add_argument(
+    #    "--om",
+    #    "--ollama-model",
+    #    dest="ollama_model",
+    #    type=str,
+    #    default=OLLAMA_SERVER_MODEL if OLLAMA_SERVER_MODEL != "" else "(None)",
+    #    help="Model to run on Ollama server",
+    #)
+    #parser.add_argument(
+    #    "--cm",
+    #    "--claude-model",
+    #    dest="claude_model",
+    #    type=str,
+    #    default=CLAUDE_MODEL if CLAUDE_MODEL != "" else "(None)",
+    #    help="Model to run on Claude in the cloud",
+    #)
     args = parser.parse_args()
     
-    if args.ghidra_server:
-        GHIDRA_SERVER_URL = args.ghidra_server
+    config_failed = False
+    #llm_server = ""
+    ghidra_url = ""
+    #ollama_url = ""
+    #ollama_model = ""
+    #claude_model = ""
+    #anthropic_api_key = ""
+
+    if args.ghidra_host: GHIDRA_SERVER_HOST = args.ghidra_host
+    if args.ghidra_port: GHIDRA_SERVER_PORT = args.ghidra_port
+
+    if GHIDRA_SERVER_HOST.strip() == "" or GHIDRA_SERVER_PORT.strip() == "":
+        print(f"[!] Host and port to Ghidra MCP plugin are both required.")
+        config_failed = True
     
-    if args.transport == "sse":
-        try:
-            # Set up logging
-            log_level = logging.INFO
-            logging.basicConfig(level=log_level)
-            logging.getLogger().setLevel(log_level)
+    ghidra_url = f"http://{GHIDRA_SERVER_HOST.strip()}:{GHIDRA_SERVER_PORT.strip()}"
 
-            # Configure MCP settings
-            mcp.settings.log_level = "INFO"
-            #if args.mcp_host:
-            #    mcp.settings.host = args.mcp_host
-            #else:
-            #    mcp.settings.host = "127.0.0.1"
+    # if (args.ollama and args.claude) or (not args.ollama and not args.claude):
+    #     print(f"[!] Select either Ollama or Claude, but not both.")
+    #     config_failed = True
 
-            #if args.mcp_port:
-            #    mcp.settings.port = args.mcp_port
-            #else:
-            #    mcp.settings.port = 8081
+    # if args.ollama or not args.claude:
 
-            logger.info(f"Connecting to Ghidra server at {ghidra_server_url}")
-            logger.info(f"Starting MCP server on http://{mcp.settings.host}:{mcp.settings.port}/sse")
-            logger.info(f"Using transport: {args.transport}")
+    #     if args.ollama_host: OLLAMA_SERVER_HOST = args.ollama_host
+    #     if args.ollama_port: OLLAMA_SERVER_PORT = args.ollama_port
+    #     if OLLAMA_SERVER_HOST.strip() == "" or OLLAMA_SERVER_PORT.strip() == "":
+    #         print(f"[!] Host and port to Ollama server are both required.")
+    #         config_failed = True
 
-            mcp.run(transport="sse")
-        except KeyboardInterrupt:
-            logger.info("Server stopped by user")
+    #     if args.ollama_model: OLLAMA_SERVER_MODEL = args.ollama_model
+    #     if OLLAMA_SERVER_MODEL.strip() == "" or OLLAMA_SERVER_MODEL.strip() == "(None)":
+    #         print(f"[!] Must specify the model to run on Ollama.")
+    #         config_failed = True
+
+    #     llm_server = "ollama"
+    #     ollama_url = f"http://{OLLAMA_SERVER_HOST.strip()}:{OLLAMA_SERVER_PORT.strip()}"
+    #     ollama_model = f"{OLLAMA_SERVER_MODEL.strip()}"
+
+    # if args.claude:
+    #     if args.claude_model: CLAUDE_MODEL = args.claude_model
+    #     if CLAUDE_MODEL.strip() == "" or CLAUDE_MODEL.strip() == "(None)":
+    #         print(f"[!] Must specify the model to run on Claude.")
+    #         config_failed = True
+
+    #     if ANTHROPIC_API_KEY == "":
+    #         print(f"[!] Must specify Anthropic API key in .env file--no CLI option.")
+    #         config_failed = True
+
+    #     llm_server = "claude"
+    #     claude_model = f"{CLAUDE_MODEL.strip()}"
+    #     anthropic_api_key = f"{ANTHROPIC_API_KEY.strip()}"
+    
+    if config_failed:
+        parser.print_usage()
+        sys.exit(1)
     else:
-        mcp.run(transport="stdio")
+        # conf: dict[str, str] = dict()
+
+        # if llm_server == "ollama":
+        #     conf["ghidra_url"] = ghidra_url
+        #     conf["ollama_url"] = ollama_url
+        #     conf["ollama_model"] = ollama_model
+            
+        #     return llm_server, conf
+
+        # elif llm_server == "claude":
+        #     conf["claude_model"] = claude_model
+        #     conf["anthropic_api_key"] = anthropic_api_key
+
+        #     return llm_server, conf
+        
+        # else:
+        #     print(f"[!] Error setting runtime config.")
+        #     sys.exit(2)
+        return ghidra_url
+        
+
+
+
+def main():
+    ghidra_url = build_runtime_config()
+    
+    # parser = argparse.ArgumentParser(description="MCP server for Ghidra")
+    # parser.add_argument("--ghidra-server", type=str, default=ghidra_url,
+    #                     help=f"Ghidra server URL, default: {ghidra_url}")
+    # parser.add_argument("--mcp-host", type=str, default="127.0.0.1",
+    #                     help="Host to run MCP server on (only used for sse), default: 127.0.0.1")
+    # parser.add_argument("--mcp-port", type=int,
+    #                     help="Port to run MCP server on (only used for sse), default: 8081")
+    # parser.add_argument("--transport", type=str, default="stdio", choices=["stdio", "sse"],
+    #                     help="Transport protocol for MCP, default: stdio")
+    # args = parser.parse_args()
+    
+    # if args.ghidra_server:
+    #     ghidra_url = args.ghidra_server
+    
+    # if args.transport == "sse":
+    #     try:
+    #         # Set up logging
+    #         log_level = logging.INFO
+    #         logging.basicConfig(level=log_level)
+    #         logging.getLogger().setLevel(log_level)
+
+    #         # Configure MCP settings
+    #         mcp.settings.log_level = "INFO"
+    #         #if args.mcp_host:
+    #         #    mcp.settings.host = args.mcp_host
+    #         #else:
+    #         #    mcp.settings.host = "127.0.0.1"
+
+    #         #if args.mcp_port:
+    #         #    mcp.settings.port = args.mcp_port
+    #         #else:
+    #         #    mcp.settings.port = 8081
+
+    #         logger.info(f"Connecting to Ghidra server at {ghidra_url}")
+    #         logger.info(f"Starting MCP server on http://{mcp.settings.host}:{mcp.settings.port}/sse")
+    #         logger.info(f"Using transport: {args.transport}")
+
+    #         mcp.run(transport="sse")
+    #     except KeyboardInterrupt:
+    #         logger.info("Server stopped by user")
+    # else:
+    #     mcp.run(transport="stdio")
+
+    mcp.run(transport="stdio", ghidra_url=ghidra_url)
         
 if __name__ == "__main__":
     main()

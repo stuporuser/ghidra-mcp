@@ -16,7 +16,7 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
 
     # Main config
     load_dotenv()
-    GHIDRA_SERVER_HOST = os.getenv("GHIDRA_SERVER_URL", "127.0.0.1")
+    GHIDRA_SERVER_HOST = os.getenv("GHIDRA_SERVER_HOST", "127.0.0.1")
     GHIDRA_SERVER_PORT = os.getenv("GHIDRA_SERVER_PORT", "8080")
     OLLAMA_SERVER_HOST = os.getenv("OLLAMA_SERVER_HOST", "127.0.0.1")
     OLLAMA_SERVER_PORT = os.getenv("OLLAMA_SERVER_PORT", "11434")
