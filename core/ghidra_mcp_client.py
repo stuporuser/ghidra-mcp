@@ -54,17 +54,17 @@ class MCPClient:
         return result 
         return None
 
-    async def list_prompts(self) -> list[types.Prompt]:
-        # TODO: Return a list of prompts defined by the MCP server
-        return []
+    # async def list_prompts(self) -> list[types.Prompt]:
+    #     # TODO: Return a list of prompts defined by the MCP server
+    #     return []
 
-    async def get_prompt(self, prompt_name, args: dict[str, str]):
-        # TODO: Get a particular prompt defined by the MCP server
-        return []
+    # async def get_prompt(self, prompt_name, args: dict[str, str]):
+    #     # TODO: Get a particular prompt defined by the MCP server
+    #     return []
 
-    async def read_resource(self, uri: str) -> Any:
-        # TODO: Read a resource, parse the contents and return it
-        return []
+    # async def read_resource(self, uri: str) -> Any:
+    #     # TODO: Read a resource, parse the contents and return it
+    #     return []
 
     async def cleanup(self):
         await self._exit_stack.aclose()
@@ -80,6 +80,9 @@ class MCPClient:
 
 # For testing
 async def main():
+
+    raise Exception("BOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+    
     async with MCPClient(
         # If using Python without UV, update command to 'python' and remove "run" from args.
         command="python",
