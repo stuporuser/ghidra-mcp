@@ -1,12 +1,21 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
-from mcp.types import Prompt, PromptMessage
+from mcp.types import Prompt, CallToolResult, TextContent
 
 from core.chat import ChatOllama
 from core.ghidra_mcp_client import MCPClient
 
 
 class CliChatOllama(ChatOllama):
+    """
+    CLI-facing chat agent for the Ghidra MCP server.
+
+    This class focuses on MCP tools and the LLM:
+    - Exposes convenience methods to list and call MCP tools.
+    - Delegates natural-language handling to ChatOllama, which can
+      autonomously decide when to call tools via Ollama's tool-calling.
+    """
+
     def __init__(
         self,
         ghidra_client: MCPClient,
@@ -23,126 +32,41 @@ class CliChatOllama(ChatOllama):
         self.ghidra_client: MCPClient = ghidra_client
 
     async def list_prompts(self) -> list[Prompt]:
+        """
+        Placeholder for MCP prompts (unused by the current Ghidra server).
+        """
         return await self.ghidra_client.list_prompts()
 
-    async def list_docs_ids(self) -> list[str]:
-        return await self.ghidra_client.read_resource("docs://documents")
-
-    async def get_doc_content(self, doc_id: str) -> str:
-        return await self.ghidra_client.read_resource(f"docs://documents/{doc_id}")
-
-    async def get_prompt(
-        self, command: str, doc_id: str
-    ) -> list[PromptMessage]:
-        return await self.ghidra_client.get_prompt(command, {"doc_id": doc_id})
-
-    async def _extract_resources(self, query: str) -> str:
-        mentions = [word[1:] for word in query.split() if word.startswith("@")]
-
-        doc_ids = await self.list_docs_ids()
-        mentioned_docs: list[Tuple[str, str]] = []
-
-        for doc_id in doc_ids:
-            if doc_id in mentions:
-                content = await self.get_doc_content(doc_id)
-                mentioned_docs.append((doc_id, content))
-
-        return "".join(
-            f'\n<document id="{doc_id}">\n{content}\n</document>\n'
-            for doc_id, content in mentioned_docs
-        )
-
-    async def _process_command(self, query: str) -> bool:
-        if not query.startswith("/"):
-            return False
-
-        words = query.split()
-        command = words[0].replace("/", "")
-
-        messages = await self.ghidra_client.get_prompt(
-            command, {"doc_id": words[1]}
-        )
-
-        self.messages += convert_prompt_messages_to_message_params(messages)
-        return True
-
-    async def _process_query(self, query: str):
-        if await self._process_command(query):
-            return
-
-        added_resources = await self._extract_resources(query)
-
-        prompt = f"""
-        The user has a question:
-        <query>
-        {query}
-        </query>
-
-        The following context may be useful in answering their question:
-        <context>
-        {added_resources}
-        </context>
-
-        Note the user's query might contain references to documents like "@report.docx". The "@" is only
-        included as a way of mentioning the doc. The actual name of the document would be "report.docx".
-        If the document content is included in this prompt, you don't need to use an additional tool to read the document.
-        Answer the user's question directly and concisely. Start with the exact information they need. 
-        Don't refer to or mention the provided context in any way - just use it to inform your answer.
+    async def list_tools(self) -> list[str]:
         """
+        Return the list of MCP tool names exposed by the Ghidra server.
+        """
+        return await self.ghidra_client.list_tools()
 
-        self.messages.append({"role": "user", "content": prompt})
+    async def call_tool(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any] | None = None,
+    ) -> str:
+        """
+        Call a single MCP tool directly and return its textual output.
 
-
-
-
-
-def convert_prompt_message_to_message_param(
-    prompt_message: "PromptMessage",
-) -> Dict[str, Any]:
-    role = "user" if prompt_message.role == "user" else "assistant"
-
-    content = prompt_message.content
-
-    # Check if content is a dict-like object with a "type" field
-    if isinstance(content, dict) or hasattr(content, "__dict__"):
-        content_type = (
-            content.get("type", None)
-            if isinstance(content, dict)
-            else getattr(content, "type", None)
+        This is useful for explicit tool invocations from the CLI when you
+        want raw Ghidra output in addition to, or instead of, an LLM-mediated
+        summary.
+        """
+        session = self.ghidra_client.session()
+        result: CallToolResult | None = await session.call_tool(
+            tool_name, arguments or {}
         )
-        if content_type == "text":
-            content_text = (
-                content.get("text", "")
-                if isinstance(content, dict)
-                else getattr(content, "text", "")
-            )
-            return {"role": role, "content": content_text}
 
-    if isinstance(content, list):
-        text_blocks = []
-        for item in content:
-            # Check if item is a dict-like object with a "type" field
-            if isinstance(item, dict) or hasattr(item, "__dict__"):
-                item_type = (
-                    item.get("type", None)
-                    if isinstance(item, dict)
-                    else getattr(item, "type", None)
-                )
-                if item_type == "text":
-                    item_text = (
-                        item.get("text", "")
-                        if isinstance(item, dict)
-                        else getattr(item, "text", "")
-                    )
-                    text_blocks.append({"type": "text", "text": item_text})
+        text_parts: List[str] = []
+        if result and getattr(result, "content", None):
+            for item in result.content:
+                if isinstance(item, TextContent):
+                    text_parts.append(item.text)
 
-        if text_blocks:
-            return {"role": role, "content": text_blocks}
+        if not text_parts:
+            return ""
 
-    return {"role": role, "content": ""}
-
-
-def convert_prompt_messages_to_message_params(
-    prompt_messages: List[PromptMessage],
-) -> List[Dict[str, Any]]:
-    return [convert_prompt_message_to_message_param(msg) for msg in prompt_messages]
+        return "\n".join(text_parts)
