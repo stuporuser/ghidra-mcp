@@ -12,7 +12,7 @@ from core.cli import CliApp
 
 
 
-def build_runtime_config() -> tuple[str, dict[str, str]]:
+def build_runtime_config(parser: argparse.ArgumentParser) -> tuple[str, dict[str, str]]:
 
     # Main config
     load_dotenv()
@@ -25,7 +25,7 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
     # Config overrides and other args
-    parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
+    #parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
     parser.add_argument("--ollama", action="store_true", help=f"Use Ollama (the default setting)")
     parser.add_argument("--claude", action="store_true", help=f"Use Claude in the cloud")
     parser.add_argument("--gh", "--ghidra-host", type=str, default=GHIDRA_SERVER_HOST,
@@ -125,8 +125,8 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
 
 async def main():
 
-    
-    llm_server, conf = build_runtime_config()
+    parser = argparse.ArgumentParser(description="Chat-based MCP tools for Ghidra")
+    llm_server, conf = build_runtime_config(parser)
 
     clients: dict[str, MCPClient] = {}
     command, args = ("python", ["core/ghidra-mcp_server.py"])
