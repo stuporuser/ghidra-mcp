@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.key_binding import KeyBindings
@@ -9,6 +9,16 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.buffer import Buffer
 
 from core.cli_chat import CliChatOllama
+
+
+# Built-in slash commands (macros) supported by the CLI.
+BUILTIN_COMMANDS: Dict[str, str] = {
+    "help": "Show help and available commands",
+    "useful_function_names": (
+        "Macro to identify main, analyze its callees, and rename functions and "
+        "variables to friendly, descriptive names using MCP tools"
+    ),
+}
 
 
 class CommandAutoSuggest(AutoSuggest):
@@ -73,13 +83,24 @@ class UnifiedCompleter(Completer):
             if len(parts) <= 1 and not text.endswith(" "):
                 cmd_prefix = parts[0] if parts else ""
 
+                # Complete built-in slash commands.
+                for name, desc in BUILTIN_COMMANDS.items():
+                    if name.startswith(cmd_prefix):
+                        yield Completion(
+                            name,
+                            start_position=-len(cmd_prefix),
+                            display=f"/{name}",
+                            display_meta=desc,
+                        )
+
+                # (Reserved for future MCP prompts support, if added again.)
                 for prompt in self.prompts:
                     if prompt.name.startswith(cmd_prefix):
                         yield Completion(
                             prompt.name,
                             start_position=-len(cmd_prefix),
                             display=f"/{prompt.name}",
-                            display_meta=prompt.description or "",
+                            display_meta=getattr(prompt, "description", "") or "",
                         )
                 return
 
@@ -207,26 +228,11 @@ class CliApp:
         except Exception as e:
             print(f"\nError listing MCP tools: {e}")
 
-        # List slash-style prompt commands, if any are defined by the MCP server
-        if self.prompts:
-            print("\nSlash commands (MCP prompts):")
-            for prompt in self.prompts:
-                arg_hint = ""
-                try:
-                    if getattr(prompt, "arguments", None):
-                        first_arg = prompt.arguments[0]
-                        arg_name = getattr(first_arg, "name", "arg")
-                        arg_hint = f" <{arg_name}>"
-                except Exception:
-                    pass
-
-                desc = getattr(prompt, "description", "") or ""
-                if desc:
-                    print(f"  /{prompt.name}{arg_hint} - {desc}")
-                else:
-                    print(f"  /{prompt.name}{arg_hint}")
-        else:
-            print("\nNo slash commands (MCP prompts) defined by the server.")
+        # List built-in slash commands (CLI macros).
+        if BUILTIN_COMMANDS:
+            print("\nSlash commands (CLI macros):")
+            for name, desc in BUILTIN_COMMANDS.items():
+                print(f"  /{name} - {desc}")
 
         print("\nAnything else you type is sent as a natural language prompt to the LLM.\n")
 
