@@ -24,7 +24,7 @@ def safe_get(endpoint: str, params: Union[dict[str, Any],None] = None) -> list:
     if params is None:
         params = {}
 
-    url = urljoin(mcp.ghidra_url, endpoint)
+    url = urljoin(ghidra_url, endpoint)
 
     try:
         response = requests.get(url, params=params, timeout=5)
@@ -41,7 +41,7 @@ def safe_post(endpoint: str, data: dict | str) -> str:
     global ghidra_url
 
     try:
-        url = urljoin(mcp.ghidra_url, endpoint)
+        url = urljoin(ghidra_url, endpoint)
         if isinstance(data, dict):
             response = requests.post(url, data=data, timeout=5)
         else:
