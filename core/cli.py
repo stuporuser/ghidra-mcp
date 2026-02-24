@@ -222,28 +222,51 @@ class CliApp:
         print("\nAnything else you type is sent as a natural language prompt to the LLM.\n")
 
     async def refresh_resources(self):
-        try:
-            self.resources = await self.agent.list_docs_ids()
-            self.completer.update_resources(self.resources)
-        except Exception as e:
-            print(f"Error refreshing resources: {e}")
+        # The current Ghidra MCP server does not expose document resources,
+        # so we treat this as a no-op and keep an empty resources list.
+        self.resources = []
+        self.completer.update_resources(self.resources)
 
     async def refresh_prompts(self):
-        try:
-            self.prompts = await self.agent.list_prompts()
-            self.completer.update_prompts(self.prompts)
-            self.command_autosuggester = CommandAutoSuggest(self.prompts)
-            self.session.auto_suggest = self.command_autosuggester
-        except Exception as e:
-            print(f"Error refreshing prompts: {e}")
+        # The current Ghidra MCP server does not define prompts, so we keep
+        # this empty and disable command autosuggestions based on prompts.
+        self.prompts = []
+        self.completer.update_prompts(self.prompts)
+        self.command_autosuggester = CommandAutoSuggest(self.prompts)
+        self.session.auto_suggest = self.command_autosuggester
 
     async def run(self):
+        # Cache the known MCP tool names for quick command detection.
+        try:
+            tool_names = await self.agent.list_tools()
+        except Exception:
+            tool_names = []
+
         while True:
             try:
                 user_input = await self.session.prompt_async("> ")
                 if not user_input.strip():
                     continue
+ 
+                text = user_input.strip()
 
+                # If the user types an MCP tool name (optionally with empty
+                # parentheses), call the MCP tool directly and show raw output.
+                base = text
+                if base.endswith("()"):
+                    base = base[:-2].strip()
+
+                if base in tool_names:
+                    print(f"Processing MCP tool '{base}' via direct call...")
+                    output = await self.agent.call_tool(base, {})
+                    if output:
+                        print(f"\nTool output:\n{output}")
+                    else:
+                        print("\nTool returned no textual output.")
+                    continue
+
+                # Otherwise, treat the input as a natural-language prompt to
+                # the LLM, which can autonomously decide to call tools.
                 response = await self.agent.run(user_input)
                 print(f"\nResponse:\n{response}")
 

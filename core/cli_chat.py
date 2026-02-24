@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from mcp.types import Prompt, CallToolResult, TextContent
+from mcp.types import CallToolResult, TextContent
 
 from core.chat import ChatOllama
 from core.ghidra_mcp_client import MCPClient
@@ -31,11 +31,11 @@ class CliChatOllama(ChatOllama):
 
         self.ghidra_client: MCPClient = ghidra_client
 
-    async def list_prompts(self) -> list[Prompt]:
+    async def list_prompts(self) -> list:
         """
         Placeholder for MCP prompts (unused by the current Ghidra server).
         """
-        return await self.ghidra_client.list_prompts()
+        return []
 
     async def list_tools(self) -> list[str]:
         """
