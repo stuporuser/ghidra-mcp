@@ -43,6 +43,8 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
                         default=CLAUDE_MODEL if CLAUDE_MODEL != "" else "(None)",
                         help=f"Model to run on Claude in the cloud, default: {OLLAMA_SERVER_PORT}")
     args = parser.parse_args()
+
+    print(args)
     
     config_failed = False
     llm_server = ""
