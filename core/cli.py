@@ -180,8 +180,19 @@ class CliApp:
         await self.refresh_resources()
         await self.refresh_prompts()
 
-        # Show initial help so users know how to interact with the CLI.
-        await self.print_help()
+        # On startup, just show available tools and a short hint.
+        try:
+            tool_names = await self.agent.list_tools()
+            if tool_names:
+                print("\nMCP tools available (callable by the LLM):")
+                for name in sorted(tool_names):
+                    print(f"  - {name}")
+            else:
+                print("\nNo MCP tools reported by the server.")
+        except Exception as e:
+            print(f"\nError listing MCP tools: {e}")
+
+        print('\nType "/help" for available commands or chat freely with the LLM.\n')
 
     async def print_help(self):
         print("\n=== Ghidra MCP Chat CLI ===")
@@ -249,6 +260,12 @@ class CliApp:
                     continue
  
                 text = user_input.strip()
+
+                # Help command shows full help output including tools and any
+                # future slash commands.
+                if text in ("/help", "help"):
+                    await self.print_help()
+                    continue
 
                 # If the user types an MCP tool name (optionally with empty
                 # parentheses), call the MCP tool directly and show raw output.

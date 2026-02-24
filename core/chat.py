@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -28,7 +29,27 @@ class ChatOllama:
         self.ollama_url: str = ollama_url.rstrip("/")
         self.ollama_model: str = ollama_model
         self.clients: Dict[str, MCPClient] = clients
-        self.messages: List[Dict[str, Any]] = []
+        # Start each conversation with a system message that nudges the model
+        # toward actually using tools to modify the Ghidra project rather than
+        # just suggesting tool calls.
+        self.messages: List[Dict[str, Any]] = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an assistant working with a reverse engineer in Ghidra. "
+                    "You have access to MCP tools that can query and modify the loaded "
+                    "program (for example: listing functions, decompiling, renaming "
+                    "functions or variables, setting comments, etc.). "
+                    "When the user asks you to perform an action that can be done with "
+                    "these tools, you should CALL THE TOOLS directly and continue "
+                    "calling additional tools as needed to accomplish the task, rather "
+                    "than only describing JSON examples of tool calls. "
+                    "After you run tools, summarize what you did and the key results in "
+                    "clear natural language. Do not show raw tool JSON back to the user "
+                    "unless they explicitly ask for it."
+                ),
+            }
+        ]
 
         # Cached tool metadata for Ollama tool calling
         self._ollama_tools: Optional[List[Dict[str, Any]]] = None
@@ -114,25 +135,45 @@ class ChatOllama:
             tool_calls = message.get("tool_calls") or []
 
             # Some models may emit the tool call structure directly as JSON in
-            # `content` instead of using the `tool_calls` field. Detect that
-            # pattern and synthesize a tool_call so we still execute the tool.
+            # `content` (often inside ```json fences) instead of using the
+            # `tool_calls` field. Detect that pattern and synthesize a
+            # tool_call so we still execute the tool.
             if not tool_calls and isinstance(content, str):
+                json_candidate: Optional[str] = None
+
+                # Prefer the last fenced ```json block if present.
+                fence_matches = list(
+                    re.finditer(r"```(?:json)?\s*([\s\S]*?)```", content, re.IGNORECASE)
+                )
+                if fence_matches:
+                    json_candidate = fence_matches[-1].group(1).strip()
+                else:
+                    json_candidate = content.strip()
+
                 try:
-                    maybe_call = json.loads(content)
-                    if (
-                        isinstance(maybe_call, dict)
-                        and "name" in maybe_call
-                        and "arguments" in maybe_call
-                        and maybe_call["name"] in self._tool_clients
-                    ):
-                        tool_calls = [
-                            {
-                                "function": {
-                                    "name": maybe_call["name"],
-                                    "arguments": maybe_call["arguments"],
-                                }
-                            }
-                        ]
+                    maybe_call = json.loads(json_candidate)
+
+                    def _calls_from_obj(obj: Any) -> List[Dict[str, Any]]:
+                        calls: List[Dict[str, Any]] = []
+                        if isinstance(obj, dict) and "name" in obj and "arguments" in obj:
+                            name = obj["name"]
+                            if name in self._tool_clients:
+                                calls.append(
+                                    {
+                                        "function": {
+                                            "name": name,
+                                            "arguments": obj.get("arguments", {}) or {},
+                                        }
+                                    }
+                                )
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                calls.extend(_calls_from_obj(item))
+                        return calls
+
+                    synthesized = _calls_from_obj(maybe_call)
+                    if synthesized:
+                        tool_calls = synthesized
                         # Clear the content so we don't just echo the JSON back.
                         content = ""
                 except Exception:

@@ -177,12 +177,12 @@ async def main():
         )
         clients["ghidra_client"] = ghidra_client
 
-        for i, server_script in enumerate(server_scripts):
-           client_id = f"client_{i}_{server_script}"
-           client = await stack.enter_async_context(
-               MCPClient(command="uv", args=["run", server_script])
-           )
-           clients[client_id] = client
+        # for i, server_script in enumerate(server_scripts):
+        #    client_id = f"client_{i}_{server_script}"
+        #    client = await stack.enter_async_context(
+        #        MCPClient(command="uv", args=["run", server_script])
+        #    )
+        #    clients[client_id] = client
 
         if llm_server == "ollama":
             chat = CliChatOllama(
