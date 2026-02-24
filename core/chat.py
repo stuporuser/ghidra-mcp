@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -55,7 +56,21 @@ class ChatOllama:
             f"{self.ollama_url}/api/chat", json=payload, timeout=60
         )
         response.raise_for_status()
-        return response.json()
+
+        # Some Ollama deployments may still stream multiple JSON objects even
+        # when stream=False. If so, fall back to parsing the last JSON line.
+        try:
+            return response.json()
+        except ValueError:
+            text = response.text.strip()
+            lines = [
+                line
+                for line in text.splitlines()
+                if line.strip() and line.strip() != "[DONE]"
+            ]
+            if not lines:
+                raise
+            return json.loads(lines[-1])
 
     async def _chat(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Run the blocking HTTP request in a thread so we don't block the event loop.
