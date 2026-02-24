@@ -10,7 +10,7 @@ from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
-
+ghidra_url = ""
 
 mcp = FastMCP("ghidra-mcp")
 
@@ -18,6 +18,9 @@ def safe_get(endpoint: str, params: Union[dict[str, Any],None] = None) -> list:
     """
     Perform a GET request with optional query parameters.
     """
+
+    global ghidra_url
+
     if params is None:
         params = {}
 
@@ -34,6 +37,9 @@ def safe_get(endpoint: str, params: Union[dict[str, Any],None] = None) -> list:
         return [f"Request failed: {str(e)}"]
 
 def safe_post(endpoint: str, data: dict | str) -> str:
+
+    global ghidra_url
+
     try:
         url = urljoin(mcp.ghidra_url, endpoint)
         if isinstance(data, dict):
@@ -434,6 +440,8 @@ def build_runtime_config() -> str:
 
 
 def main():
+    global ghidra_url
+
     ghidra_url = build_runtime_config()
     
     # parser = argparse.ArgumentParser(description="MCP server for Ghidra")
@@ -479,7 +487,7 @@ def main():
     # else:
     #     mcp.run(transport="stdio")
 
-    mcp.run(transport="stdio", ghidra_url=ghidra_url)
+    mcp.run(transport="stdio")
         
 if __name__ == "__main__":
     main()
