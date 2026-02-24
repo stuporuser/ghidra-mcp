@@ -168,7 +168,7 @@ async def main():
     command, args = ("python", [
         "core/ghidra_mcp_server.py",
         "--ghidra-host", conf["ghidra_host"],
-        "--ghidra-host", conf["ghidra_port"],
+        "--ghidra-port", conf["ghidra_port"],
         ])
 
     async with AsyncExitStack() as stack:
