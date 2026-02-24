@@ -85,8 +85,6 @@ def build_runtime_config() -> tuple[str, dict[str, str]]:
         help="Model to run on Claude in the cloud",
     )
     args = parser.parse_args()
-
-    print(args)
     
     config_failed = False
     llm_server = ""
