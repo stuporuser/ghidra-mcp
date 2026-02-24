@@ -204,22 +204,22 @@ class CliApp:
             for prompt in self.prompts:
                 arg_hint = ""
                 try:
-                    if getattr(prompt, \"arguments\", None):
+                    if getattr(prompt, "arguments", None):
                         first_arg = prompt.arguments[0]
-                        arg_name = getattr(first_arg, \"name\", \"arg\")
-                        arg_hint = f\" <{arg_name}>\"
+                        arg_name = getattr(first_arg, "name", "arg")
+                        arg_hint = f" <{arg_name}>"
                 except Exception:
                     pass
 
-                desc = getattr(prompt, \"description\", \"\") or \"\"
+                desc = getattr(prompt, "description", "") or ""
                 if desc:
-                    print(f\"  /{prompt.name}{arg_hint} - {desc}\")
+                    print(f"  /{prompt.name}{arg_hint} - {desc}")
                 else:
-                    print(f\"  /{prompt.name}{arg_hint}\")
+                    print(f"  /{prompt.name}{arg_hint}")
         else:
-            print(\"\\nNo slash commands (MCP prompts) defined by the server.\")
+            print("\nNo slash commands (MCP prompts) defined by the server.")
 
-        print(\"\\nAnything else you type is sent as a natural language prompt to the LLM.\\n\")
+        print("\nAnything else you type is sent as a natural language prompt to the LLM.\n")
 
     async def refresh_resources(self):
         try:
