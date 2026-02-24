@@ -180,6 +180,47 @@ class CliApp:
         await self.refresh_resources()
         await self.refresh_prompts()
 
+        # Show initial help so users know how to interact with the CLI.
+        await self.print_help()
+
+    async def print_help(self):
+        print("\n=== Ghidra MCP Chat CLI ===")
+
+        # List MCP tools exposed by the Ghidra MCP server
+        try:
+            tool_names = await self.agent.ghidra_client.list_tools()
+            if tool_names:
+                print("\nMCP tools available (callable by the LLM):")
+                for name in sorted(tool_names):
+                    print(f"  - {name}")
+            else:
+                print("\nNo MCP tools reported by the server.")
+        except Exception as e:
+            print(f"\nError listing MCP tools: {e}")
+
+        # List slash-style prompt commands, if any are defined by the MCP server
+        if self.prompts:
+            print("\nSlash commands (MCP prompts):")
+            for prompt in self.prompts:
+                arg_hint = ""
+                try:
+                    if getattr(prompt, \"arguments\", None):
+                        first_arg = prompt.arguments[0]
+                        arg_name = getattr(first_arg, \"name\", \"arg\")
+                        arg_hint = f\" <{arg_name}>\"
+                except Exception:
+                    pass
+
+                desc = getattr(prompt, \"description\", \"\") or \"\"
+                if desc:
+                    print(f\"  /{prompt.name}{arg_hint} - {desc}\")
+                else:
+                    print(f\"  /{prompt.name}{arg_hint}\")
+        else:
+            print(\"\\nNo slash commands (MCP prompts) defined by the server.\")
+
+        print(\"\\nAnything else you type is sent as a natural language prompt to the LLM.\\n\")
+
     async def refresh_resources(self):
         try:
             self.resources = await self.agent.list_docs_ids()
