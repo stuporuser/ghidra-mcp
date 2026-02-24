@@ -169,7 +169,7 @@ async def main():
     llm_server, conf = build_runtime_config()
 
     clients: dict[str, MCPClient] = {}
-    command, args = ("python", ["core/ghidra-mcp_server.py"])
+    command, args = ("python", ["core/ghidra_mcp_server.py"])
 
     async with AsyncExitStack() as stack:
         ghidra_client = await stack.enter_async_context(
